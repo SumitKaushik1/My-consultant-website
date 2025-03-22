@@ -859,152 +859,171 @@
 <script src="js/scrollax.min.js"></script>
 <script src="js/main.js"></script>
 
-<!-- Chatbot HTML structure -->
-<div class="chat-logo" id="chatButton"><i class="fas fa-comment-alt"></i></div>
-<div class="chatbot-container" id="chatbotContainer">
-    <div class="chat-header">
-        Querybox
-        <button class="minimize-btn" id="minimizeButton">X</button>
-    </div>
-    <div class="chat-body" id="chatBody"></div>
-    <div class="chat-footer" id="chatFooter">
-        <div class="input-container">
-            <input type="text" id="chatInput" placeholder="Type a message...">
-            <i class="fas fa-paper-plane send-icon" id="sendMessage"></i>
+ <!-- Chatbot HTML structure -->
+    <div class="chat-logo" id="chatButton"><i class="fas fa-comment-alt"></i></div>
+    <div class="chatbot-container" id="chatbotContainer">
+        <div class="chat-header">
+            Querybox
+            <button class="minimize-btn" id="minimizeButton">X</button>
         </div>
-        <!-- OTP container -->
-        <div id="otp-container" style="display: none;">
-            <input type="text" id="otpInput" placeholder="Enter OTP" />
-            <button id="verifyOtpBtn">Verify OTP</button>
+        <div class="chat-body" id="chatBody"></div>
+        <div class="chat-footer" id="chatFooter">
+            <div class="input-container">
+                <input type="text" id="chatInput" placeholder="Type a message...">
+                <i class="fas fa-paper-plane send-icon" id="sendMessage"></i>
+            </div>
+            <!-- OTP container -->
+            <div id="otp-container" style="display: none;">
+                <input type="text" id="otpInput" placeholder="Enter OTP" />
+                <button id="verifyOtpBtn">Verify OTP</button>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Firebase Configuration -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-    import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+    <!-- Add a container for the visible Recaptcha -->
+    <div id="recaptcha-container"></div>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAtcWDPIjDZTn6BPBWsy9nvi_h6tXw5nO4",
-        authDomain: "chatbot-5df62.firebaseapp.com",
-        projectId: "chatbot-5df62",
-        storageBucket: "chatbot-5df62.appspot.com",
-        messagingSenderId: "1094943289375",
-        appId: "1:1094943289375:web:38e9460cd198ca043a252a",
-        measurementId: "G-4NE1MBLHT6"
-    };
+    <!-- Firebase and other scripts -->
+    <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtcWDPIjDZTn6BPBWsy9nvi_h6tXw5nO4",
+            authDomain: "chatbot-5df62.firebaseapp.com",
+            projectId: "chatbot-5df62",
+            storageBucket: "chatbot-5df62.appspot.com",
+            messagingSenderId: "1094943289375",
+            appId: "1:1094943289375:web:38e9460cd198ca043a252a",
+            measurementId: "G-4NE1MBLHT6"
+        };
 
-    const chatButton = document.getElementById('chatButton');
-    const chatbotContainer = document.getElementById('chatbotContainer');
-    const chatBody = document.getElementById('chatBody');
-    const chatInput = document.getElementById('chatInput');
-    const sendMessage = document.getElementById('sendMessage');
-    const minimizeButton = document.getElementById('minimizeButton');
-    const chatFooter = document.getElementById('chatFooter');
-    const otpContainer = document.getElementById('otp-container');
-    const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-    let chatHistory = [];
-    let userName = "";
-    let userMobile = "";
-    let chatStep = 0;
-    let confirmationResult;
+        const chatButton = document.getElementById('chatButton');
+        const chatbotContainer = document.getElementById('chatbotContainer');
+        const chatBody = document.getElementById('chatBody');
+        const chatInput = document.getElementById('chatInput');
+        const sendMessage = document.getElementById('sendMessage');
+        const minimizeButton = document.getElementById('minimizeButton');
+        const chatFooter = document.getElementById('chatFooter');
+        const otpContainer = document.getElementById('otp-container');
+        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
 
-    function addMessage(message, isUser) {
-        const messageElement = document.createElement('div');
-        messageElement.textContent = message;
-        messageElement.className = isUser ? 'user-message' : 'bot-message';
-        chatBody.appendChild(messageElement);
-        chatBody.scrollTop = chatBody.scrollHeight;
-        chatHistory.push((isUser ? 'User: ' : 'Bot: ') + message);
-    }
+        let chatHistory = [];
+        let userName = "";
+        let userMobile = "";
+        let chatStep = 0;
+        let confirmationResult;
 
-    function handleSendMessage() {
-        const message = chatInput.value.trim();
-        if (!message) {
-            alert("Please enter a message before sending.");
-            return;
+        function addMessage(message, isUser) {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messageElement.className = isUser ? 'user-message' : 'bot-message';
+            chatBody.appendChild(messageElement);
+            chatBody.scrollTop = chatBody.scrollHeight;
+            chatHistory.push((isUser ? 'User: ' : 'Bot: ') + message);
         }
 
-        addMessage(message, true);
-        chatInput.value = "";
+        function handleSendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) {
+                alert("Please enter a message before sending.");
+                return;
+            }
 
-        if (chatStep === 0) {
-            userName = message;
-            addMessage(`Hi ${userName}!`, false);
-            setTimeout(() => addMessage("Please enter your mobile number.", false), 1000);
-            chatStep++;
-        } else if (chatStep === 1) {
-            userMobile = message;
-            sendOTP(userMobile);
-        }
-    }
+            addMessage(message, true);
+            chatInput.value = "";
 
-    function sendOTP(mobile) {
-        addMessage(`Sending OTP to ${mobile}...`, false);
-
-        window.recaptchaVerifier = new RecaptchaVerifier('sendMessage', {
-            'size': 'invisible',
-            'callback': () => console.log("Recaptcha Verified")
-        }, auth);
-
-        signInWithPhoneNumber(auth, `+91${mobile}`, window.recaptchaVerifier)
-            .then((result) => {
-                confirmationResult = result;
-                addMessage("OTP sent. Please enter it.", false);
-                otpContainer.style.display = "block";
-            })
-            .catch((error) => {
-                console.error("Error sending OTP:", error);
-                addMessage("Failed to send OTP. Try again.", false);
-            });
-    }
-
-    verifyOtpBtn.onclick = () => {
-        const otp = document.getElementById('otpInput').value;
-        confirmationResult.confirm(otp)
-            .then(() => {
-                addMessage("OTP verified successfully!", false);
-                addMessage("How can I assist you regarding our service?", false);
-                otpContainer.style.display = "none";
+            if (chatStep === 0) {
+                userName = message;
+                addMessage(`Hi ${userName}!`, false);
+                setTimeout(() => addMessage("Please enter your mobile number.", false), 1000);
                 chatStep++;
-            })
-            .catch((error) => {
-                console.error("Error verifying OTP:", error);
-                addMessage("Invalid OTP. Please try again.", false);
-            });
-    };
-
-    async function saveChatHistory() {
-        try {
-            await addDoc(collection(db, "chatHistories"), {
-                name: userName,
-                mobile: userMobile,
-                chatHistory: chatHistory.join('\n'),
-                date: new Date().toLocaleString()
-            });
-        } catch (error) {
-            console.error("Error saving chat:", error);
-            addMessage("Failed to save chat history.", false);
+            } else if (chatStep === 1) {
+                userMobile = message;
+                sendOTP(userMobile);
+            }
         }
-    }
 
-    chatButton.onclick = () => chatbotContainer.style.display = chatbotContainer.style.display === "none" ? "block" : "none";
-    minimizeButton.onclick = () => chatbotContainer.style.display = 'none';
-    sendMessage.onclick = handleSendMessage;
-    chatInput.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") handleSendMessage();
-    });
+        function sendOTP(mobile) {
+            addMessage(`Sending OTP to ${mobile}...`, false);
 
-    addMessage("Hello! What's your name?", false);
-</script>
+            // Initialize RecaptchaVerifier with a visible widget
+            window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', {
+                'size': 'normal', // Use 'normal' for a visible Recaptcha
+                'callback': (response) => {
+                    console.log("Recaptcha Verified", response);
+                    // Proceed with OTP sending
+                    signInWithPhoneNumber(auth, `+91${mobile}`, window.recaptchaVerifier)
+                        .then((result) => {
+                            confirmationResult = result;
+                            console.log("OTP sent successfully. confirmationResult:", confirmationResult);
+                            addMessage("OTP sent. Please enter it.", false);
+                            otpContainer.style.display = "block";
+                        })
+                        .catch((error) => {
+                            console.error("Error sending OTP:", error);
+                            addMessage("Failed to send OTP. Try again.", false);
+                            if (error.code === "auth/too-many-requests") {
+                                addMessage("Too many requests. Please try again later.", false);
+                            }
+                        });
+                },
+                'expired-callback': () => {
+                    console.log("Recaptcha Expired");
+                    addMessage("Recaptcha expired. Please try again.", false);
+                }
+            }, auth);
 
+            // Render the Recaptcha widget
+            window.recaptchaVerifier.render().then((widgetId) => {
+                console.log("Recaptcha widget rendered:", widgetId);
+            });
+        }
+
+        verifyOtpBtn.onclick = () => {
+            const otp = document.getElementById('otpInput').value;
+            if (!otp) {
+                alert("Please enter the OTP.");
+                return;
+            }
+
+            if (!confirmationResult) {
+                console.error("confirmationResult is not defined.");
+                addMessage("OTP verification failed. Please try again.", false);
+                return;
+            }
+
+            confirmationResult.confirm(otp)
+                .then((result) => {
+                    console.log("OTP verified successfully. Result:", result);
+                    addMessage("OTP verified successfully!", false);
+                    addMessage("How can I assist you regarding our service?", false);
+                    otpContainer.style.display = "none";
+                    chatStep++;
+                })
+                .catch((error) => {
+                    console.error("Error verifying OTP:", error);
+                    addMessage("Invalid OTP. Please try again.", false);
+                });
+        };
+
+        chatButton.onclick = () => chatbotContainer.style.display = chatbotContainer.style.display === "none" ? "block" : "none";
+        minimizeButton.onclick = () => chatbotContainer.style.display = 'none';
+        sendMessage.onclick = handleSendMessage;
+        chatInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") handleSendMessage();
+        });
+
+        addMessage("Hello! What's your name?", false);
+    </script>
 
 
 </body>
