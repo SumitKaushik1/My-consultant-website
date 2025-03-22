@@ -845,7 +845,6 @@
 		  </div>
 		</div>
 	  </footer>
-
 <script src="js/jquery.min.js"></script>
 <script src="js/jquery-migrate-3.0.1.min.js"></script>
 <script src="js/popper.min.js"></script>
@@ -858,10 +857,9 @@
 <script src="js/aos.js"></script>
 <script src="js/jquery.animateNumber.min.js"></script>
 <script src="js/scrollax.min.js"></script>
-
 <script src="js/main.js"></script>
+
 <!-- Chatbot HTML structure -->
-<!-- Chatbot UI -->
 <div class="chat-logo" id="chatButton"><i class="fas fa-comment-alt"></i></div>
 <div class="chatbot-container" id="chatbotContainer">
     <div class="chat-header">
@@ -874,15 +872,20 @@
             <input type="text" id="chatInput" placeholder="Type a message...">
             <i class="fas fa-paper-plane send-icon" id="sendMessage"></i>
         </div>
+        <!-- OTP container -->
+        <div id="otp-container" style="display: none;">
+            <input type="text" id="otpInput" placeholder="Enter OTP" />
+            <button id="verifyOtpBtn">Verify OTP</button>
+        </div>
     </div>
 </div>
 
-<!-- Firebase and Chatbot Logic -->
+<!-- Firebase Configuration -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
     import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+    import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-    // ✅ Updated Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyAtcWDPIjDZTn6BPBWsy9nvi_h6tXw5nO4",
         authDomain: "chatbot-5df62.firebaseapp.com",
@@ -894,6 +897,7 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
 
     const chatButton = document.getElementById('chatButton');
@@ -903,11 +907,14 @@
     const sendMessage = document.getElementById('sendMessage');
     const minimizeButton = document.getElementById('minimizeButton');
     const chatFooter = document.getElementById('chatFooter');
+    const otpContainer = document.getElementById('otp-container');
+    const verifyOtpBtn = document.getElementById('verifyOtpBtn');
 
     let chatHistory = [];
     let userName = "";
     let userMobile = "";
     let chatStep = 0;
+    let confirmationResult;
 
     function addMessage(message, isUser) {
         const messageElement = document.createElement('div');
@@ -935,17 +942,44 @@
             chatStep++;
         } else if (chatStep === 1) {
             userMobile = message;
-            addMessage("How can I assist you regarding our service?", false);
-            chatStep++;
-        } else if (chatStep === 2) {
-            setTimeout(() => {
-                addMessage("Thank you! Have a great day! We'll get back to you soon.", false);
-                saveChatHistory();
-                chatFooter.style.display = 'none';
-            }, 1000);
-            chatStep++;
+            sendOTP(userMobile);
         }
     }
+
+    function sendOTP(mobile) {
+        addMessage(`Sending OTP to ${mobile}...`, false);
+
+        window.recaptchaVerifier = new RecaptchaVerifier('sendMessage', {
+            'size': 'invisible',
+            'callback': () => console.log("Recaptcha Verified")
+        }, auth);
+
+        signInWithPhoneNumber(auth, `+91${mobile}`, window.recaptchaVerifier)
+            .then((result) => {
+                confirmationResult = result;
+                addMessage("OTP sent. Please enter it.", false);
+                otpContainer.style.display = "block";
+            })
+            .catch((error) => {
+                console.error("Error sending OTP:", error);
+                addMessage("Failed to send OTP. Try again.", false);
+            });
+    }
+
+    verifyOtpBtn.onclick = () => {
+        const otp = document.getElementById('otpInput').value;
+        confirmationResult.confirm(otp)
+            .then(() => {
+                addMessage("OTP verified successfully!", false);
+                addMessage("How can I assist you regarding our service?", false);
+                otpContainer.style.display = "none";
+                chatStep++;
+            })
+            .catch((error) => {
+                console.error("Error verifying OTP:", error);
+                addMessage("Invalid OTP. Please try again.", false);
+            });
+    };
 
     async function saveChatHistory() {
         try {
@@ -970,7 +1004,6 @@
 
     addMessage("Hello! What's your name?", false);
 </script>
-
 
 
 
